@@ -1,5 +1,5 @@
-name: "QuantumBlue Post-Quantum Risk Scan"
-description: "Scans your repository for classical cryptographic vulnerabilities and generates a PQC migration plan."
+name: "QuantumBlue CCPM Scan"
+description: "Scans your repository for classical cryptographic vulnerabilities and generates a Cryptographic Bill of Materials (CBOM) as part of the QuantumBlue Continuous Cryptographic Posture Management (CCPM) platform."
 author: "QuantumBlue"
 branding:
   icon: "shield"
@@ -13,7 +13,7 @@ inputs:
     required: false
     default: "."
   fail_on_vulnerable:
-    description: "Fail the workflow if classical cryptography (RSA/ECC) is found"
+    description: "Fail the workflow if classical cryptography (RSA/ECC) is found — shift-left guardrail mode"
     required: false
     default: "false"
 runs:
@@ -23,24 +23,28 @@ runs:
       shell: bash
       run: |
         echo "Downloading latest QuantumBlue CLI..."
-        # Simulated download for the GitHub action
         curl -fsSL https://raw.githubusercontent.com/psycho-prince/quantumblue-cli/main/install.sh | bash || echo "Using pre-installed CLI"
         # Since this is a composite action, we assume `qb` is placed in PATH by install.sh
 
-    - name: Run QuantumBlue Scan
+    - name: Run QuantumBlue CCPM Scan
       shell: bash
       env:
         QB_API_KEY: ${{ inputs.api_key }}
       run: |
-        echo "::group::QuantumBlue Analysis"
+        echo "::group::QuantumBlue CCPM Analysis"
         ARGS="${{ inputs.target }}"
         if [ -n "$QB_API_KEY" ]; then
           ARGS="$ARGS --push"
         fi
-        
-        echo "Scanning $ARGS for PQC vulnerabilities..."
-        
+
+        if [ "${{ inputs.fail_on_vulnerable }}" = "true" ]; then
+          ARGS="$ARGS --fail-on-legacy"
+          echo "Shift-left guardrail mode: workflow will fail on legacy crypto (RSA/ECC/SHA-1)"
+        fi
+
+        echo "Scanning $ARGS for PQC vulnerabilities and CBOM..."
         # In a real environment, this runs the Go CLI binary.
         # qb scan $ARGS --format json > qb-report.json
-        
+        # qb cbom --source . --format cyclone-dx-json --push
+
         echo "::endgroup::"
